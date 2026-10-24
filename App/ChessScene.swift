@@ -28,6 +28,7 @@ final class ChessScene: NSObject, ObservableObject {
     let cameraNode = SCNNode()
     var onSquareTapped: ((Square) -> Void)?
 
+    private let moveDuration: TimeInterval = 0.85
     private let piecesRoot = SCNNode()
     private let markersRoot = SCNNode()
     private var pieceNodes: [Square: SCNNode] = [:]
@@ -504,10 +505,10 @@ final class ChessScene: NSObject, ObservableObject {
                     promoted.opacity = 0
                     promoted.scale = SCNVector3(0.75, 0.75, 0.75)
                     piecesRoot.addChildNode(promoted)
-                    promoted.runAction(.sequence([.wait(duration: 0.36), .group([
+                    promoted.runAction(.sequence([.wait(duration: moveDuration), .group([
                         .fadeIn(duration: 0.18), .scale(to: 1, duration: 0.18)
                     ])]))
-                    node.runAction(.sequence([.wait(duration: 0.36), .fadeOut(duration: 0.15), .removeFromParentNode()]))
+                    node.runAction(.sequence([.wait(duration: moveDuration), .fadeOut(duration: 0.15), .removeFromParentNode()]))
                     replacement[square] = promoted
                 }
             } else if renderedPieces[square] == piece, let node = pieceNodes[square] {
@@ -522,9 +523,9 @@ final class ChessScene: NSObject, ObservableObject {
         for node in pieceNodes.values where !used.contains(ObjectIdentifier(node)) {
             node.categoryBitMask = 2
             node.enumerateChildNodes { child, _ in child.categoryBitMask = 2 }
-            node.runAction(.sequence([.group([
-                .fadeOut(duration: 0.20), .scale(to: 0.75, duration: 0.20),
-                .moveBy(x: 0, y: 0.16, z: 0, duration: 0.20)
+            node.runAction(.sequence([.wait(duration: moveDuration * 0.65), .group([
+                .fadeOut(duration: 0.30), .scale(to: 0.75, duration: 0.30),
+                .moveBy(x: 0, y: 0.16, z: 0, duration: 0.30)
             ]), .removeFromParentNode()]))
         }
         pieceNodes = replacement
@@ -534,8 +535,9 @@ final class ChessScene: NSObject, ObservableObject {
         let start = node.presentation.position
         let end = boardPoint(square, height: pieceHeight)
         node.removeAction(forKey: "travel")
-        let action = SCNAction.customAction(duration: 0.42) { node, elapsed in
-            let progress = min(SceneScalar(elapsed) / 0.42, 1)
+        let duration = moveDuration
+        let action = SCNAction.customAction(duration: duration) { node, elapsed in
+            let progress = min(SceneScalar(elapsed) / SceneScalar(duration), 1)
             let eased = progress * progress * (3 - 2 * progress)
             let lift = sin(progress * .pi) * (knight ? SceneScalar(0.64) : SceneScalar(0.18))
             node.position = SCNVector3(start.x + (end.x - start.x) * eased,

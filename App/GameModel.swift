@@ -292,8 +292,12 @@ final class GameModel: ObservableObject {
             let search = Task.detached(priority: .userInitiated) {
                 ChessAI.bestMove(in: snapshot, difficulty: level)
             }
+            // Search and the minimum response pause overlap. This lets the
+            // human's animation finish without adding delay to a longer search.
             let move = await withTaskCancellationHandler(operation: {
-                await search.value
+                do { try await Task.sleep(nanoseconds: 1_400_000_000) }
+                catch { search.cancel(); return nil as Move? }
+                return await search.value
             }, onCancel: { search.cancel() })
             guard !Task.isCancelled, let self, self.gameID == currentGame else { return }
             self.isThinking = false
